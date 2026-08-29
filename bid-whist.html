@@ -4,141 +4,279 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bid Whist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&display=swap">
 <style>
+/* ------------------------------------------------------------------
+   One committed visual world: a card table under a hanging lamp.
+   Walnut rail, worn wool felt, brass, ivory cards, carmine backs.
+   Single theme on purpose - every colour is painted explicitly so the
+   page holds on either host background.
+   ------------------------------------------------------------------ */
 :root{
-  --felt:#0d5c3f; --felt2:#0a4831; --ink:#0e1a14; --line:rgba(255,255,255,.14);
-  --panel:#12211b; --panel2:#182e25; --txt:#e8f2ec; --muted:#9db3a8;
-  --gold:#f0c14b; --us:#6fd3a0; --them:#f08a8a;
+  --ink:#15100D;          /* warm near-black, the room */
+  --ink-2:#1F1813;        /* panel ground */
+  --ink-3:#2A211A;        /* raised panel */
+  --rail:#4A2E1C;         /* walnut rail */
+  --rail-2:#2C1A10;
+  --felt:#23544A;         /* wool, not casino green */
+  --felt-2:#12332C;
+  --brass:#E2AC52;        /* the accent - spent here and nowhere else */
+  --brass-dim:#9E7833;
+  --ivory:#F4EFE2;        /* card stock */
+  --carmine:#A82636;      /* card backs */
+  --us:#E2AC52;
+  --them:#D9705F;
+  --txt:#EFE6D6;
+  --muted:#A2917C;
+  --hair:rgba(244,239,226,.13);
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;
 }
 *{box-sizing:border-box}
+html{color-scheme:dark}
 body{
-  margin:0;font:14px/1.45 "Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
-  background:var(--ink);color:var(--txt);
+  margin:0;background:var(--ink);color:var(--txt);
+  font:400 14px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased;
 }
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
 button{
-  font:inherit;font-weight:600;color:#10201a;background:var(--gold);border:0;border-radius:7px;
-  padding:7px 12px;cursor:pointer;
+  font:600 13px/1 var(--sans);color:#1B120A;background:var(--brass);
+  border:0;border-radius:6px;padding:9px 14px;cursor:pointer;
+  transition:filter .12s ease,transform .12s ease;
 }
-button:hover{filter:brightness(1.08)}
-button:disabled{opacity:.4;cursor:not-allowed;filter:none}
-button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
-select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)}
+button:hover:not(:disabled){filter:brightness(1.09)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--txt);border:1px solid var(--hair)}
+button.ghost:hover{background:rgba(244,239,226,.06)}
+select{
+  font:500 13px var(--sans);padding:7px 9px;border-radius:6px;
+  border:1px solid var(--hair);background:var(--ink-3);color:var(--txt);
+}
 
-#app{max-width:1180px;margin:0 auto;padding:10px 12px 20px}
-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 2px 12px}
-header h1{font-size:20px;margin:0;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
-.score{display:flex;gap:8px;margin-left:auto}
-.score span{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:12px;color:var(--muted)}
-.score b{font-size:16px;margin-left:6px}
-.score .us b{color:var(--us)} .score .them b{color:var(--them)}
-.hdr-actions{display:flex;gap:8px}
+#app{max-width:1160px;margin:0 auto;padding:16px 16px 28px}
 
-#layout{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}
-@media(max-width:880px){#layout{grid-template-columns:1fr}}
+/* ---------------- header ---------------- */
+header{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:0 2px 16px}
+.wordmark h1{
+  font:900 27px/.95 var(--serif);letter-spacing:-.015em;color:var(--brass);
+  font-variation-settings:"SOFT" 20,"WONK" 1;
+}
+.wordmark p{margin:5px 0 0;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
 
-/* ---- table ---- */
+.scoreboard{display:flex;gap:10px;margin-left:auto}
+.tally{
+  background:var(--ink-2);border:1px solid var(--hair);border-radius:9px;
+  padding:7px 12px 9px;min-width:104px;
+}
+.tally .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.tally .num{
+  float:right;font:800 19px/1 var(--sans);font-variant-numeric:tabular-nums;
+}
+.tally.us .num{color:var(--us)} .tally.them .num{color:var(--them)}
+/* the -7 .. +7 race, drawn rather than described */
+.track{position:relative;height:3px;margin-top:9px;clear:both;background:rgba(244,239,226,.12);border-radius:2px}
+.track:before{content:"";position:absolute;left:50%;top:-3px;width:1px;height:9px;background:rgba(244,239,226,.3)}
+.track i{position:absolute;top:-2.5px;width:8px;height:8px;margin-left:-4px;border-radius:50%;transition:left .35s ease}
+.tally.us .track i{background:var(--us)} .tally.them .track i{background:var(--them)}
+.hdr-actions{display:flex;gap:8px;align-self:flex-end}
+
+/* ---------------- layout ---------------- */
+#layout{display:grid;grid-template-columns:1fr 296px;gap:14px;align-items:start}
+@media(max-width:900px){#layout{grid-template-columns:1fr}}
+
+/* ---------------- the table ---------------- */
 #table{
-  position:relative;min-height:430px;border-radius:16px;
-  background:radial-gradient(ellipse at 50% 45%,var(--felt) 0%,var(--felt2) 70%,#073526 100%);
-  border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 0 60px rgba(0,0,0,.45);
-  padding:10px;
+  position:relative;min-height:440px;border-radius:20px;padding:22px;
+  background:linear-gradient(163deg,var(--rail) 0%,#3A2416 45%,var(--rail-2) 100%);
+  box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,220,170,.16);
 }
-.seat{position:absolute;text-align:center;width:150px}
-.seat-n{top:10px;left:50%;transform:translateX(-50%)}
-.seat-s{bottom:10px;left:50%;transform:translateX(-50%)}
-.seat-w{left:10px;top:50%;transform:translateY(-50%)}
-.seat-e{right:10px;top:50%;transform:translateY(-50%)}
-.seat .nm{font-weight:700;font-size:13px}
-.seat .team{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.seat .meta{font-size:11px;color:var(--muted);margin-top:2px}
-.seat.active{outline:2px solid var(--gold);outline-offset:6px;border-radius:10px}
-.seat .bidtag{display:inline-block;margin-top:4px;font-size:11px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.3);border:1px solid var(--line)}
-.seat .bidtag.pass{opacity:.55}
-.seat .bidtag.win{background:var(--gold);color:#10201a;border-color:var(--gold);font-weight:700}
-.backs{display:flex;justify-content:center;margin-top:4px;height:26px}
-.backs i{display:block;width:11px;height:24px;margin-left:-4px;border-radius:3px;
-  background:repeating-linear-gradient(45deg,#8d2431,#8d2431 3px,#6e1a24 3px,#6e1a24 6px);
-  border:1px solid rgba(0,0,0,.5)}
+#table:before{
+  content:"";position:absolute;inset:14px;border-radius:12px;z-index:0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 38%,rgba(255,255,255,.075),rgba(0,0,0,0) 70%),
+    repeating-linear-gradient(45deg,rgba(0,0,0,.028) 0 2px,rgba(255,255,255,.012) 2px 4px),
+    radial-gradient(ellipse at 50% 45%,var(--felt) 0%,var(--felt-2) 72%,#0C241F 100%);
+  box-shadow:inset 0 0 44px rgba(0,0,0,.5),inset 0 0 0 1px rgba(0,0,0,.35);
+}
+.seat,#center{position:relative;z-index:1}
+.seat{position:absolute;text-align:center;width:154px}
+.seat-n{top:26px;left:50%;transform:translateX(-50%)}
+.seat-s{bottom:26px;left:50%;transform:translateX(-50%)}
+.seat-w{left:24px;top:50%;transform:translateY(-50%)}
+.seat-e{right:24px;top:50%;transform:translateY(-50%)}
+.seat .nm{font:700 14px var(--sans);letter-spacing:.01em}
+.seat .nm .d{font-weight:600;color:var(--brass);font-size:10px;letter-spacing:.1em}
+.seat .team{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:rgba(239,230,214,.5);margin-top:1px}
+.seat .meta{font-size:11px;color:rgba(239,230,214,.62);margin-top:3px;font-variant-numeric:tabular-nums}
+.seat.active{border-radius:12px;box-shadow:0 0 0 1.5px var(--brass),0 0 22px rgba(226,172,82,.28);padding:6px 0}
+.seat .bidtag{
+  display:inline-block;margin-top:6px;font:600 11px var(--sans);padding:3px 9px;border-radius:99px;
+  background:rgba(0,0,0,.34);border:1px solid rgba(244,239,226,.16);
+}
+.seat .bidtag.pass{opacity:.5;font-weight:400}
+.seat .bidtag.win{background:var(--brass);color:#1B120A;border-color:var(--brass)}
+.backs{display:flex;justify-content:center;margin-top:6px;height:28px}
+.backs i{
+  display:block;width:12px;height:26px;margin-left:-4.5px;border-radius:2.5px;
+  background:repeating-linear-gradient(45deg,var(--carmine) 0 3px,#7C1926 3px 6px);
+  border:1px solid rgba(0,0,0,.55);box-shadow:0 1px 2px rgba(0,0,0,.4);
+}
 
-#center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:250px;height:200px}
+#center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:252px;height:196px}
 #trickArea{position:relative;width:100%;height:100%}
 #trickArea .slot{position:absolute}
 #trickArea .p0{bottom:0;left:50%;transform:translateX(-50%)}
 #trickArea .p2{top:0;left:50%;transform:translateX(-50%)}
 #trickArea .p1{left:0;top:50%;transform:translateY(-50%)}
 #trickArea .p3{right:0;top:50%;transform:translateY(-50%)}
-#contract{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  text-align:center;font-size:12px;color:#cfe6da;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
-#contract .big{display:block;font-size:17px;font-weight:800;color:var(--gold);letter-spacing:.03em}
-
-/* ---- cards ---- */
-.card{
-  width:50px;height:70px;border-radius:6px;background:#fbfbf7;color:#15181c;
-  border:1px solid #b9bcb4;box-shadow:0 2px 5px rgba(0,0,0,.45);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-weight:800;line-height:1;user-select:none;flex:0 0 auto;
+#contract{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:210px;
+  text-align:center;font-size:11.5px;line-height:1.6;color:rgba(239,230,214,.78);
+  text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;
 }
-.card .cr{font-size:19px}
-.card .cs{font-size:19px}
-.card.red{color:#c2202c}
-.card.joker{color:#7b2fb5}
-.card.joker .cr{font-size:12px;letter-spacing:.05em}
-.card.sm{width:38px;height:54px}
-.card.sm .cr,.card.sm .cs{font-size:14px}
-.card.sm.joker .cr{font-size:9px}
-.card.win{box-shadow:0 0 0 2px var(--gold),0 2px 8px rgba(0,0,0,.5)}
+#contract .big{
+  display:block;font:700 20px/1.15 var(--serif);color:var(--brass);
+  font-variation-settings:"SOFT" 20,"WONK" 1;margin-bottom:3px;
+}
+#contract .books{font-variant-numeric:tabular-nums}
 
-#handArea{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
-#handLabel{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-#myHand{display:flex;flex-wrap:wrap;gap:5px;min-height:72px}
-#myHand .card{cursor:pointer;transition:transform .1s}
-#myHand .card:hover{transform:translateY(-7px)}
-#myHand .card.dim{opacity:.32;cursor:not-allowed}
-#myHand .card.dim:hover{transform:none}
-#myHand .card.sel{transform:translateY(-10px);box-shadow:0 0 0 2px var(--gold),0 4px 10px rgba(0,0,0,.5)}
+/* ---------------- cards ---------------- */
+.card{
+  position:relative;width:54px;height:76px;border-radius:5px;flex:0 0 auto;
+  background:linear-gradient(178deg,#FBF8EF,var(--ivory));color:#1A1614;
+  border:1px solid #C4BCA8;box-shadow:0 2px 6px rgba(0,0,0,.45);user-select:none;
+}
+.card .idx{
+  position:absolute;top:4px;left:6px;font:800 14px/1 var(--sans);
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+}
+.card .pip{position:absolute;left:0;right:0;top:50%;transform:translateY(-45%);text-align:center;font-size:26px;line-height:1}
+.card.red{color:var(--carmine)}
+.card.joker{color:#6B3FA0}
+.card.joker .idx{font-size:9.5px;letter-spacing:.06em;top:5px}
+.card.sm{width:42px;height:59px}
+.card.sm .idx{font-size:11px;top:3px;left:4px}
+.card.sm .pip{font-size:19px}
+.card.sm.joker .idx{font-size:8px}
+.card.win{box-shadow:0 0 0 2px var(--brass),0 3px 12px rgba(0,0,0,.55)}
+
+#handArea{
+  margin-top:14px;background:var(--ink-2);border:1px solid var(--hair);
+  border-radius:12px;padding:12px 14px 14px;
+}
+#handLabel{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+#myHand{display:flex;flex-wrap:wrap;gap:6px;min-height:78px}
+#myHand .card{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+#myHand .card:hover{transform:translateY(-8px);box-shadow:0 8px 16px rgba(0,0,0,.5)}
+#myHand .card.dim{opacity:.4;filter:saturate(.5);cursor:not-allowed}
+#myHand .card.dim:hover{transform:none;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+#myHand .card.sel{transform:translateY(-11px);box-shadow:0 0 0 2px var(--brass),0 8px 16px rgba(0,0,0,.5)}
 #myHand.locked .card{cursor:default}
-#myHand.locked .card:hover{transform:none}
+#myHand.locked .card:hover{transform:none;box-shadow:0 2px 6px rgba(0,0,0,.45)}
 
-/* ---- side ---- */
-#side{display:flex;flex-direction:column;gap:10px}
-#status{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;min-height:42px}
-#panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:none}
+/* ---------------- side rail ---------------- */
+#side{display:flex;flex-direction:column;gap:12px}
+#status{
+  background:var(--ink-2);border:1px solid var(--hair);border-radius:10px;
+  padding:12px 14px;font-size:13px;min-height:44px;
+}
+#status .deal{
+  display:flex;flex-wrap:wrap;gap:5px 10px;align-items:baseline;
+  padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid var(--hair);
+}
+#status .deal b{font:700 13px var(--sans);color:var(--brass)}
+#status .deal span{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+#status .deal .suit{color:var(--txt);font-size:13px}
+#status .deal .suit.red{color:var(--them)}
+#panel{background:var(--ink-3);border:1px solid rgba(226,172,82,.24);border-radius:10px;padding:14px;display:none}
 #panel.on{display:block}
-#panel h4{margin:0 0 9px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--gold)}
-.row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-.row label{font-size:12px;color:var(--muted);min-width:52px}
+#panel h4,#logWrap h4{
+  font:600 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;margin:0 0 11px;
+}
+#panel h4{color:var(--brass)} #logWrap h4{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+.row label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-width:46px}
+.hint{font-size:11.5px;line-height:1.5;color:var(--muted);margin:0 0 10px}
 .suitbtns{display:flex;gap:6px}
-.suitbtn{width:40px;height:40px;font-size:20px;border-radius:8px;background:#fbfbf7;color:#15181c;border:2px solid transparent}
-.suitbtn.red{color:#c2202c}
-.suitbtn.on{border-color:var(--gold)}
-#logWrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;flex:1}
-#logWrap h4{margin:0 0 8px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-#log{max-height:260px;overflow-y:auto;font-size:12px;line-height:1.5}
-#log div{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-#log .hl{color:var(--gold);font-weight:600}
-#log .good{color:var(--us)} #log .bad{color:var(--them)}
+.suitbtn{
+  width:38px;height:38px;font-size:19px;line-height:1;border-radius:7px;padding:0;
+  background:var(--ivory);color:#1A1614;border:2px solid transparent;
+}
+.suitbtn.red{color:var(--carmine)}
+.suitbtn.on{border-color:var(--brass);box-shadow:0 0 12px rgba(226,172,82,.35)}
+#logWrap{background:var(--ink-2);border:1px solid var(--hair);border-radius:10px;padding:12px 14px;flex:1}
+#log{max-height:262px;overflow-y:auto;font-size:12px;line-height:1.5}
+#log div{padding:3px 0;border-bottom:1px solid rgba(244,239,226,.06)}
+#log div:last-child{border-bottom:0}
+#log .hl{color:var(--brass);font-weight:600}
+#log .good{color:#7FCBA8} #log .bad{color:var(--them)}
 
-/* ---- modal ---- */
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+/* ---------------- phone ---------------- */
+@media(max-width:640px){
+  #app{padding:12px 10px 22px}
+  header{gap:12px}
+  .scoreboard{margin-left:0;order:3;width:100%}
+  .tally{flex:1}
+  .hdr-actions{margin-left:auto}
+  #table{min-height:398px;padding:12px}
+  #table:before{inset:7px}
+  .seat{width:112px}
+  .seat-w{left:8px} .seat-e{right:8px}
+  .seat-n{top:14px} .seat-s{bottom:14px}
+  .seat .nm{font-size:12.5px}
+  .backs i{width:9px;height:20px;margin-left:-3.5px}
+  #center{width:172px;height:168px}
+  #contract{width:170px}
+  #contract .big{font-size:17px}
+  .card{width:44px;height:62px}
+  .card .idx{font-size:12px} .card .pip{font-size:21px}
+  .card.sm{width:34px;height:48px}
+  .card.sm .idx{font-size:9px} .card.sm .pip{font-size:15px}
+  #myHand{gap:4px;min-height:64px}
+  .sheet-body{padding:22px 20px 8px}
+  .sheet .close{padding:12px 20px 16px}
+}
+
+/* ---------------- how to play ---------------- */
+#modal{position:fixed;inset:0;background:rgba(10,7,5,.78);display:flex;align-items:center;justify-content:center;padding:22px;z-index:50}
 #modal[hidden]{display:none}
-.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:720px;width:100%;
-  max-height:86vh;overflow-y:auto;padding:22px 26px}
-.sheet h2{margin:0 0 4px;color:var(--gold);font-size:19px}
-.sheet h3{margin:18px 0 6px;font-size:14px;color:var(--gold)}
-.sheet p,.sheet li{font-size:13px;color:#d6e5dd}
-.sheet ul{margin:6px 0;padding-left:20px}
-.sheet .close{position:sticky;bottom:0;display:flex;justify-content:flex-end;padding-top:14px}
-.tag{display:inline-block;background:rgba(240,193,75,.15);border:1px solid rgba(240,193,75,.4);
-  color:var(--gold);border-radius:5px;padding:1px 6px;font-size:12px;font-weight:600}
+.sheet{
+  background:var(--ink-2);border:1px solid var(--hair);border-radius:14px;
+  max-width:680px;width:100%;max-height:86vh;display:flex;flex-direction:column;
+}
+.sheet-body{overflow-y:auto;padding:28px 32px 10px}
+.sheet h2{font:900 24px/1.1 var(--serif);color:var(--brass);font-variation-settings:"SOFT" 20,"WONK" 1;margin-bottom:10px}
+.sheet h3{font:700 15px var(--serif);color:var(--brass);margin:24px 0 7px}
+.sheet p,.sheet li{font-size:13.5px;line-height:1.62;color:#DDD2C0;max-width:62ch}
+.sheet ul{margin:7px 0;padding-left:20px}
+.sheet li{margin-bottom:4px}
+.sheet .close{display:flex;justify-content:flex-end;padding:14px 32px 18px;
+  border-top:1px solid var(--hair);background:var(--ink-2);border-radius:0 0 13px 13px}
+.tag{
+  display:inline-block;background:rgba(226,172,82,.14);border:1px solid rgba(226,172,82,.38);
+  color:var(--brass);border-radius:4px;padding:0 6px;font-size:12px;font-weight:600;
+}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>Bid Whist</h1>
-    <div class="score">
-      <span class="us">Us<b id="scoreUs">0</b></span>
-      <span class="them">Them<b id="scoreThem">0</b></span>
+    <div class="wordmark">
+      <h1>Bid Whist</h1>
+      <p>You &amp; Partner vs. West &amp; East</p>
+    </div>
+    <div class="scoreboard">
+      <div class="tally us"><span class="lbl">Us</span><span class="num" id="scoreUs">0</span>
+        <div class="track"><i id="trackUs"></i></div></div>
+      <div class="tally them"><span class="lbl">Them</span><span class="num" id="scoreThem">0</span>
+        <div class="track"><i id="trackThem"></i></div></div>
     </div>
     <div class="hdr-actions">
       <button class="ghost" id="btnHelp">How to Play</button>
@@ -173,6 +311,7 @@ header h1{font-size:20px;margin:0;letter-spacing:.06em;text-transform:uppercase;
 
 <div id="modal" hidden>
   <div class="sheet">
+    <div class="sheet-body">
     <h2>How to Play Bid Whist</h2>
     <p>You sit South. <b>Partner</b> (North) is on your team &mdash; <span class="tag">Us</span>.
        <b>West</b> and <b>East</b> are the opponents &mdash; <span class="tag">Them</span>.</p>
@@ -233,6 +372,7 @@ header h1{font-size:20px;margin:0;letter-spacing:.06em;text-transform:uppercase;
        does not use a forced dealer bid, and redeals when everyone passes. Kitty cards are
        never counted toward either team.</p>
 
+    </div>
     <div class="close"><button id="btnCloseHelp">Got it</button></div>
   </div>
 </div>
@@ -674,8 +814,8 @@ const $ = id => document.getElementById(id);
 function cardNode(c, small){
   const d = document.createElement('div');
   d.className = 'card' + (small ? ' sm' : '') + (c.joker ? ' joker' : (isRed(c) ? ' red' : ''));
-  const r = document.createElement('span'); r.className = 'cr';
-  const s = document.createElement('span'); s.className = 'cs';
+  const r = document.createElement('span'); r.className = 'idx';
+  const s = document.createElement('span'); s.className = 'pip';
   if (c.joker){ r.textContent = c.joker === 'big' ? 'BIG' : 'LIL'; s.textContent = '★'; }
   else { r.textContent = rankLabel(c); s.textContent = SUIT_SYM[c.suit]; }
   d.appendChild(r); d.appendChild(s);
@@ -686,6 +826,10 @@ function render(){
   if (!G) return;
   $('scoreUs').textContent = G.scores[0];
   $('scoreThem').textContent = G.scores[1];
+  // the marker sits on the -7 .. +7 race
+  const pos = v => (Math.max(-7, Math.min(7, v)) + 7) / 14 * 100 + '%';
+  $('trackUs').style.left = pos(G.scores[0]);
+  $('trackThem').style.left = pos(G.scores[1]);
   renderSeats();
   renderCenter();
   renderHand();
@@ -698,7 +842,7 @@ function renderSeats(){
     const el = $('seat' + i);
     el.className = 'seat seat-' + ['s','w','n','e'][i] +
       ((G.turn === i && (G.phase === 'bid' || (G.phase === 'play' && G.trick.length < 4))) ? ' active' : '');
-    let html = '<div class="nm">' + SEATS[i].name + (i === G.dealer ? ' <span class="team">(D)</span>' : '') + '</div>';
+    let html = '<div class="nm">' + SEATS[i].name + (i === G.dealer ? ' <span class="d">DEAL</span>' : '') + '</div>';
     html += '<div class="team">' + TEAM_NAME[SEATS[i].team] + '</div>';
     if (i !== 0){
       html += '<div class="backs">' + '<i></i>'.repeat(Math.min(G.hands[i].length, 12)) + '</div>';
@@ -732,7 +876,7 @@ function renderCenter(){
     c.innerHTML = (G.trick.length ? '' :
       '<span class="big">' + bidText(G.bid) + '</span>' +
       (G.nt ? 'No trump' : 'Trump: ' + SUIT_SYM[G.trump] + ' ' + SUIT_NAME[G.trump]) +
-      '<br>Books — Us ' + G.tricks[0] + ' · Them ' + G.tricks[1]);
+      '<br><span class="books">Books — Us ' + G.tricks[0] + ' · Them ' + G.tricks[1] + '</span>');
   } else if (G.phase === 'bid'){
     c.innerHTML = G.bid ? '<span class="big">' + bidText(G.bid) + '</span>' +
                           'high bid · ' + SEATS[G.bidder].name
@@ -765,11 +909,22 @@ function renderHand(){
   }
 }
 
+/* The contract has to stay on screen even when cards cover the table. */
+function dealLine(){
+  if (!(G.phase === 'play' || G.phase === 'score' || G.phase === 'over') || !G.bid) return '';
+  const t = G.nt ? '<span>no trump</span>'
+                 : '<span class="suit' + (G.trump === 'H' || G.trump === 'D' ? ' red' : '') + '">' +
+                   SUIT_SYM[G.trump] + '</span>';
+  return '<div class="deal"><b>' + bidText(G.bid) + '</b>' + t +
+         '<span>' + SEATS[G.bidder].name + ' bid · ' + TEAM_NAME[SEATS[G.bidder].team] +
+         ' need ' + (6 + G.bid.level) + '</span>' +
+         '<span>Books — Us ' + G.tricks[0] + ' · Them ' + G.tricks[1] + '</span></div>';
+}
 function renderStatus(){
   const s = $('status');
   if (G.phase === 'over'){
-    s.innerHTML = '<b>' + (G.winner === 0 ? 'You win! ' : 'You lose. ') + '</b>' +
-                  'Final score: Us ' + G.scores[0] + ', Them ' + G.scores[1] + '.';
+    s.textContent = (G.winner === 0 ? 'You win! ' : 'You lose. ') +
+                    'Final score: Us ' + G.scores[0] + ', Them ' + G.scores[1] + '.';
   } else if (G.phase === 'score'){
     s.textContent = 'Hand over. Us took ' + G.tricks[0] + ' books, Them took ' + G.tricks[1] + '.';
   } else if (G.phase === 'bid'){
@@ -781,6 +936,8 @@ function renderStatus(){
     s.textContent = G.turn === 0 ? 'Your lead or your play.'
                                  : SEATS[G.turn].name + ' to play…';
   } else s.textContent = 'Dealing…';
+  const d = dealLine();
+  if (d) s.innerHTML = d + '<div>' + s.textContent.replace(/</g, '&lt;') + '</div>';
 }
 
 /* ---------- interactive panel (bidding, kitty, next hand) ---------- */
@@ -801,7 +958,7 @@ function renderPanel(){
     }
     let html = '<h4>Your bid</h4>';
     if (!opts.length){
-      html += '<p style="font-size:12px;color:var(--muted)">Nothing left to bid over ' + bidText(G.bid) + '.</p>';
+      html += '<p class="hint">Nothing left to bid over ' + bidText(G.bid) + '.</p>';
     } else {
       html += '<div class="row"><label>Bid</label><select id="bidPick">';
       for (const o of opts){
@@ -812,8 +969,7 @@ function renderPanel(){
       html += '<div class="row"><label>Way</label><select id="dirPick">' +
               '<option value="up">Uptown (A high)</option>' +
               '<option value="down">Downtown (A, 2, 3 …)</option></select></div>';
-      html += '<div class="row" style="font-size:11px;color:var(--muted)">' +
-              'You name the trump suit after you take the kitty.</div>';
+      html += '<p class="hint">You name the trump suit after you take the kitty.</p>';
     }
     html += '<div class="row" style="margin-top:4px">' +
             (opts.length ? '<button id="btnBid">Bid</button>' : '') +
@@ -838,8 +994,7 @@ function renderPanel(){
       }
       html += '</div></div>';
     } else {
-      html += '<div class="row" style="font-size:12px;color:var(--muted)">' +
-              'No trump. Any joker you hold must go in the discard.</div>';
+      html += '<p class="hint">No trump this hand. Any joker you hold must go into the discard.</p>';
     }
     html += '<div class="row"><button id="btnDiscard">Discard 6</button></div>';
     p.innerHTML = html;
