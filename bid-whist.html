@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bid Whist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   One committed visual world: a card table under a hanging lamp.
+   Walnut rail, worn wool felt, brass, ivory cards, carmine backs.
+   Single theme on purpose - every colour is painted explicitly so the
+   page holds on either host background.
+   ------------------------------------------------------------------ */
+:root{
+  --ink:#15100D;          /* warm near-black, the room */
+  --ink-2:#1F1813;        /* panel ground */
+  --ink-3:#2A211A;        /* raised panel */
+  --rail:#4A2E1C;         /* walnut rail */
+  --rail-2:#2C1A10;
+  --felt:#23544A;         /* wool, not casino green */
+  --felt-2:#12332C;
+  --brass:#E2AC52;        /* the accent - spent here and nowhere else */
+  --brass-dim:#9E7833;
+  --ivory:#F4EFE2;        /* card stock */
+  --carmine:#A82636;      /* card backs */
+  --us:#E2AC52;
+  --them:#D9705F;
+  --txt:#EFE6D6;
+  --muted:#A2917C;
+  --hair:rgba(244,239,226,.13);
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{
+  margin:0;background:var(--ink);color:var(--txt);
+  font:400 14px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+button{
+  font:600 13px/1 var(--sans);color:#1B120A;background:var(--brass);
+  border:0;border-radius:6px;padding:9px 14px;cursor:pointer;
+  transition:filter .12s ease,transform .12s ease;
+}
+button:hover:not(:disabled){filter:brightness(1.09)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--txt);border:1px solid var(--hair)}
+button.ghost:hover{background:rgba(244,239,226,.06)}
+select{
+  font:500 13px var(--sans);padding:7px 9px;border-radius:6px;
+  border:1px solid var(--hair);background:var(--ink-3);color:var(--txt);
+}
+
+#app{max-width:1160px;margin:0 auto;padding:16px 16px 28px}
+
+/* ---------------- header ---------------- */
+header{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:0 2px 16px}
+.wordmark h1{
+  font:900 27px/.95 var(--serif);letter-spacing:-.015em;color:var(--brass);
+  font-variation-settings:"SOFT" 20,"WONK" 1;
+}
+.wordmark p{margin:5px 0 0;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+.scoreboard{display:flex;gap:10px;margin-left:auto}
+.tally{
+  background:var(--ink-2);border:1px solid var(--hair);border-radius:9px;
+  padding:7px 12px 9px;min-width:104px;
+}
+.tally .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.tally .num{
+  float:right;font:800 19px/1 var(--sans);font-variant-numeric:tabular-nums;
+}
+.tally.us .num{color:var(--us)} .tally.them .num{color:var(--them)}
+/* the -7 .. +7 race, drawn rather than described */
+.track{position:relative;height:3px;margin-top:9px;clear:both;background:rgba(244,239,226,.12);border-radius:2px}
+.track:before{content:"";position:absolute;left:50%;top:-3px;width:1px;height:9px;background:rgba(244,239,226,.3)}
+.track i{position:absolute;top:-2.5px;width:8px;height:8px;margin-left:-4px;border-radius:50%;transition:left .35s ease}
+.tally.us .track i{background:var(--us)} .tally.them .track i{background:var(--them)}
+.hdr-actions{display:flex;gap:8px;align-self:flex-end}
+
+/* ---------------- layout ---------------- */
+#layout{display:grid;grid-template-columns:1fr 296px;gap:14px;align-items:start}
+@media(max-width:900px){#layout{grid-template-columns:1fr}}
+
+/* ---------------- the table ---------------- */
+#table{
+  position:relative;min-height:440px;border-radius:20px;padding:22px;
+  background:linear-gradient(163deg,var(--rail) 0%,#3A2416 45%,var(--rail-2) 100%);
+  box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,220,170,.16);
+}
+#table:before{
+  content:"";position:absolute;inset:14px;border-radius:12px;z-index:0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 38%,rgba(255,255,255,.075),rgba(0,0,0,0) 70%),
+    repeating-linear-gradient(45deg,rgba(0,0,0,.028) 0 2px,rgba(255,255,255,.012) 2px 4px),
+    radial-gradient(ellipse at 50% 45%,var(--felt) 0%,var(--felt-2) 72%,#0C241F 100%);
+  box-shadow:inset 0 0 44px rgba(0,0,0,.5),inset 0 0 0 1px rgba(0,0,0,.35);
+}
+.seat,#center{position:relative;z-index:1}
+.seat{position:absolute;text-align:center;width:154px}
+.seat-n{top:26px;left:50%;transform:translateX(-50%)}
+.seat-s{bottom:26px;left:50%;transform:translateX(-50%)}
+.seat-w{left:24px;top:50%;transform:translateY(-50%)}
+.seat-e{right:24px;top:50%;transform:translateY(-50%)}
+.seat .nm{font:700 14px var(--sans);letter-spacing:.01em}
+.seat .nm .d{font-weight:600;color:var(--brass);font-size:10px;letter-spacing:.1em}
+.seat .team{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:rgba(239,230,214,.5);margin-top:1px}
+.seat .meta{font-size:11px;color:rgba(239,230,214,.62);margin-top:3px;font-variant-numeric:tabular-nums}
+.seat.active{border-radius:12px;box-shadow:0 0 0 1.5px var(--brass),0 0 22px rgba(226,172,82,.28);padding:6px 0}
+.seat .bidtag{
+  display:inline-block;margin-top:6px;font:600 11px var(--sans);padding:3px 9px;border-radius:99px;
+  background:rgba(0,0,0,.34);border:1px solid rgba(244,239,226,.16);
+}
+.seat .bidtag.pass{opacity:.5;font-weight:400}
+.seat .bidtag.win{background:var(--brass);color:#1B120A;border-color:var(--brass)}
+.backs{display:flex;justify-content:center;margin-top:6px;height:28px}
+.backs i{
+  display:block;width:12px;height:26px;margin-left:-4.5px;border-radius:2.5px;
+  background:repeating-linear-gradient(45deg,var(--carmine) 0 3px,#7C1926 3px 6px);
+  border:1px solid rgba(0,0,0,.55);box-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+
+#center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:252px;height:196px}
+#trickArea{position:relative;width:100%;height:100%}
+#trickArea .slot{position:absolute}
+#trickArea .p0{bottom:0;left:50%;transform:translateX(-50%)}
+#trickArea .p2{top:0;left:50%;transform:translateX(-50%)}
+#trickArea .p1{left:0;top:50%;transform:translateY(-50%)}
+#trickArea .p3{right:0;top:50%;transform:translateY(-50%)}
+#contract{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:210px;
+  text-align:center;font-size:11.5px;line-height:1.6;color:rgba(239,230,214,.78);
+  text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;
+}
+#contract .big{
+  display:block;font:700 20px/1.15 var(--serif);color:var(--brass);
+  font-variation-settings:"SOFT" 20,"WONK" 1;margin-bottom:3px;
+}
+#contract .books{font-variant-numeric:tabular-nums}
+
+/* ---------------- cards ---------------- */
+.card{
+  position:relative;width:54px;height:76px;border-radius:5px;flex:0 0 auto;
+  background:linear-gradient(178deg,#FBF8EF,var(--ivory));color:#1A1614;
+  border:1px solid #C4BCA8;box-shadow:0 2px 6px rgba(0,0,0,.45);user-select:none;
+}
+.card .idx{
+  position:absolute;top:4px;left:6px;font:800 14px/1 var(--sans);
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+}
+.card .pip{position:absolute;left:0;right:0;top:50%;transform:translateY(-45%);text-align:center;font-size:26px;line-height:1}
+.card.red{color:var(--carmine)}
+.card.joker{color:#6B3FA0}
+.card.joker .idx{font-size:9.5px;letter-spacing:.06em;top:5px}
+.card.sm{width:42px;height:59px}
+.card.sm .idx{font-size:11px;top:3px;left:4px}
+.card.sm .pip{font-size:19px}
+.card.sm.joker .idx{font-size:8px}
+.card.win{box-shadow:0 0 0 2px var(--brass),0 3px 12px rgba(0,0,0,.55)}
+
+#handArea{
+  margin-top:14px;background:var(--ink-2);border:1px solid var(--hair);
+  border-radius:12px;padding:12px 14px 14px;
+}
+#handLabel{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+#myHand{display:flex;flex-wrap:wrap;gap:6px;min-height:78px}
+#myHand .card{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+#myHand .card:hover{transform:translateY(-8px);box-shadow:0 8px 16px rgba(0,0,0,.5)}
+#myHand .card.dim{opacity:.4;filter:saturate(.5);cursor:not-allowed}
+#myHand .card.dim:hover{transform:none;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+#myHand .card.sel{transform:translateY(-11px);box-shadow:0 0 0 2px var(--brass),0 8px 16px rgba(0,0,0,.5)}
+#myHand.locked .card{cursor:default}
+#myHand.locked .card:hover{transform:none;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+
+/* ---------------- side rail ---------------- */
+#side{display:flex;flex-direction:column;gap:12px}
+#status{
+  background:var(--ink-2);border:1px solid var(--hair);border-radius:10px;
+  padding:12px 14px;font-size:13px;min-height:44px;
+}
+#status .deal{
+  display:flex;flex-wrap:wrap;gap:5px 10px;align-items:baseline;
+  padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid var(--hair);
+}
+#status .deal b{font:700 13px var(--sans);color:var(--brass)}
+#status .deal span{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+#status .deal .suit{color:var(--txt);font-size:13px}
+#status .deal .suit.red{color:var(--them)}
+#panel{background:var(--ink-3);border:1px solid rgba(226,172,82,.24);border-radius:10px;padding:14px;display:none}
+#panel.on{display:block}
+#panel h4,#logWrap h4{
+  font:600 10px var(--sans);letter-spacing:.18em;text-transform:uppercase;margin:0 0 11px;
+}
+#panel h4{color:var(--brass)} #logWrap h4{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+.row label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-width:46px}
+.hint{font-size:11.5px;line-height:1.5;color:var(--muted);margin:0 0 10px}
+.suitbtns{display:flex;gap:6px}
+.suitbtn{
+  width:38px;height:38px;font-size:19px;line-height:1;border-radius:7px;padding:0;
+  background:var(--ivory);color:#1A1614;border:2px solid transparent;
+}
+.suitbtn.red{color:var(--carmine)}
+.suitbtn.on{border-color:var(--brass);box-shadow:0 0 12px rgba(226,172,82,.35)}
+#logWrap{background:var(--ink-2);border:1px solid var(--hair);border-radius:10px;padding:12px 14px;flex:1}
+#log{max-height:262px;overflow-y:auto;font-size:12px;line-height:1.5}
+#log div{padding:3px 0;border-bottom:1px solid rgba(244,239,226,.06)}
+#log div:last-child{border-bottom:0}
+#log .hl{color:var(--brass);font-weight:600}
+#log .good{color:#7FCBA8} #log .bad{color:var(--them)}
+
+/* ---------------- phone ---------------- */
+@media(max-width:640px){
+  #app{padding:12px 10px 22px}
+  header{gap:12px}
+  .scoreboard{margin-left:0;order:3;width:100%}
+  .tally{flex:1}
+  .hdr-actions{margin-left:auto}
+  #table{min-height:398px;padding:12px}
+  #table:before{inset:7px}
+  .seat{width:112px}
+  .seat-w{left:8px} .seat-e{right:8px}
+  .seat-n{top:14px} .seat-s{bottom:14px}
+  .seat .nm{font-size:12.5px}
+  .backs i{width:9px;height:20px;margin-left:-3.5px}
+  #center{width:172px;height:168px}
+  #contract{width:170px}
+  #contract .big{font-size:17px}
+  .card{width:44px;height:62px}
+  .card .idx{font-size:12px} .card .pip{font-size:21px}
+  .card.sm{width:34px;height:48px}
+  .card.sm .idx{font-size:9px} .card.sm .pip{font-size:15px}
+  #myHand{gap:4px;min-height:64px}
+  .sheet-body{padding:22px 20px 8px}
+  .sheet .close{padding:12px 20px 16px}
+}
+
+/* ---------------- how to play ---------------- */
+#modal{position:fixed;inset:0;background:rgba(10,7,5,.78);display:flex;align-items:center;justify-content:center;padding:22px;z-index:50}
+#modal[hidden]{display:none}
+.sheet{
+  background:var(--ink-2);border:1px solid var(--hair);border-radius:14px;
+  max-width:680px;width:100%;max-height:86vh;display:flex;flex-direction:column;
+}
+.sheet-body{overflow-y:auto;padding:28px 32px 10px}
+.sheet h2{font:900 24px/1.1 var(--serif);color:var(--brass);font-variation-settings:"SOFT" 20,"WONK" 1;margin-bottom:10px}
+.sheet h3{font:700 15px var(--serif);color:var(--brass);margin:24px 0 7px}
+.sheet p,.sheet li{font-size:13.5px;line-height:1.62;color:#DDD2C0;max-width:62ch}
+.sheet ul{margin:7px 0;padding-left:20px}
+.sheet li{margin-bottom:4px}
+.sheet .close{display:flex;justify-content:flex-end;padding:14px 32px 18px;
+  border-top:1px solid var(--hair);background:var(--ink-2);border-radius:0 0 13px 13px}
+.tag{
+  display:inline-block;background:rgba(226,172,82,.14);border:1px solid rgba(226,172,82,.38);
+  color:var(--brass);border-radius:4px;padding:0 6px;font-size:12px;font-weight:600;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="wordmark">
+      <h1>Bid Whist</h1>
+      <p>You &amp; Partner vs. West &amp; East</p>
+    </div>
+    <div class="scoreboard">
+      <div class="tally us"><span class="lbl">Us</span><span class="num" id="scoreUs">0</span>
+        <div class="track"><i id="trackUs"></i></div></div>
+      <div class="tally them"><span class="lbl">Them</span><span class="num" id="scoreThem">0</span>
+        <div class="track"><i id="trackThem"></i></div></div>
+    </div>
+    <div class="hdr-actions">
+      <button class="ghost" id="btnHelp">How to Play</button>
+      <button id="btnNew">New Game</button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <section id="table">
+      <div class="seat seat-n" id="seat2"></div>
+      <div class="seat seat-w" id="seat1"></div>
+      <div class="seat seat-e" id="seat3"></div>
+      <div class="seat seat-s" id="seat0"></div>
+      <div id="center">
+        <div id="trickArea"></div>
+        <div id="contract"></div>
+      </div>
+    </section>
+
+    <aside id="side">
+      <div id="status">Dealing&hellip;</div>
+      <div id="panel"></div>
+      <div id="logWrap"><h4>Game Log</h4><div id="log"></div></div>
+    </aside>
+  </div>
+
+  <div id="handArea">
+    <div id="handLabel">Your hand</div>
+    <div id="myHand"></div>
+  </div>
+</div>
+
+<div id="modal" hidden>
+  <div class="sheet">
+    <div class="sheet-body">
+    <h2>How to Play Bid Whist</h2>
+    <p>You sit South. <b>Partner</b> (North) is on your team &mdash; <span class="tag">Us</span>.
+       <b>West</b> and <b>East</b> are the opponents &mdash; <span class="tag">Them</span>.</p>
+
+    <h3>The deck and the deal</h3>
+    <ul>
+      <li>54 cards: a standard 52-card deck plus the <b>Big Joker</b> and the <b>Little Joker</b>.</li>
+      <li>Each player gets 12 cards. The remaining 6 cards form the <b>kitty</b>.</li>
+    </ul>
+
+    <h3>Bidding</h3>
+    <p>Bidding starts to the dealer's left and goes once around. A bid is a number from
+       <b>3 to 7</b> &mdash; the number of tricks (called <b>books</b>) over six that your team promises to win.
+       A bid of 4 means your team must take 10 of the 12 books.</p>
+    <p>You also declare the <b>direction</b>:</p>
+    <ul>
+      <li><b>Uptown</b> &mdash; cards rank high to low: A K Q J 10 9 8 7 6 5 4 3 2.</li>
+      <li><b>Downtown</b> &mdash; the order flips: A 2 3 4 5 6 7 8 9 10 J Q K, so the Ace is still the boss but the deuce is next.</li>
+      <li><b>No Trump</b> &mdash; no suit is trump. You still pick uptown or downtown.
+          A no-trump bid outranks a suit bid at the same number, so 4 No Trump beats 4 Uptown.</li>
+    </ul>
+    <p>Each bid must beat the one before it, and you may pass. The dealer cannot:
+       if the other three all pass, the dealer is stuck with a <b>forced three</b>
+       and bids the direction of their choice.</p>
+
+    <h3>The kitty</h3>
+    <p>Whoever wins the bid picks up all 6 kitty cards, names the <b>trump suit</b>
+       (skipped on a no-trump bid), then discards any 6 cards back down to 12.
+       The discards are out of play for the rest of the hand and count for neither team.</p>
+
+    <h3>The jokers</h3>
+    <ul>
+      <li>In a trump contract the jokers <b>are</b> trumps and beat every other card:
+          Big Joker is highest, Little Joker second.</li>
+      <li>In a <b>no-trump</b> contract the jokers are dead. They cannot be led and they never win a book.
+          The bid winner must discard any joker into the kitty; a joker still held by anyone else can only be
+          thrown away when they are void of the suit led.</li>
+    </ul>
+
+    <h3>Playing the hand</h3>
+    <ul>
+      <li>The bid winner leads the first book. Play moves clockwise.</li>
+      <li>You <b>must follow the suit led</b> if you can. If you cannot, play anything.</li>
+      <li>Trump beats any non-trump card. Otherwise the highest card of the suit led wins.</li>
+      <li>The winner of each book leads the next. Twelve books are played.</li>
+    </ul>
+
+    <h3>Scoring</h3>
+    <ul>
+      <li>If the bidding team takes at least 6 + their bid, they score <b>one point for every book over six</b>
+          that they actually took.</li>
+      <li>If they fall short they are <b>set</b> and lose the amount of their bid.</li>
+      <li>A <b>no-trump</b> contract is worth <b>double</b>, either way &mdash; a made 4 no-trump scores 8,
+          and a set one costs 8.</li>
+      <li>The defending team does not score.</li>
+      <li>First team to reach <b>+7</b> wins. A team that falls to <b>&minus;7</b> loses.</li>
+      <li><b>Boston.</b> Take all twelve books and you win the game on the spot, whatever the score was.
+          It counts for the defenders too &mdash; shut the bidders out completely and the game is yours.</li>
+    </ul>
+
+    <h3>House rules</h3>
+    <p>Bid Whist varies from table to table. This version doubles no-trump, forces a three on the
+       dealer rather than redealing, and lets a Boston end the game outright. Kitty cards are never
+       counted toward either team, and uptown and downtown rank equally when bidding, so a 4 Downtown
+       cannot be bid over a 4 Uptown.</p>
+
+    </div>
+    <div class="close"><button id="btnCloseHelp">Got it</button></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   Bid Whist - single file, no dependencies.
+   Seats: 0 = You (South), 1 = West, 2 = Partner (North), 3 = East.
+   Teams: 0 = Us (seats 0 & 2), 1 = Them (seats 1 & 3).
+   ============================================================ */
+
+const SUITS = ['S','H','D','C'];
+const SUIT_SYM = {S:'♠', H:'♥', D:'♦', C:'♣'};
+const SUIT_NAME = {S:'Spades', H:'Hearts', D:'Diamonds', C:'Clubs'};
+const RANK_NAME = {11:'J',12:'Q',13:'K',14:'A'};
+const SEATS = [
+  {name:'You',     team:0, human:true},
+  {name:'West',    team:1, human:false},
+  {name:'Partner', team:0, human:false},
+  {name:'East',    team:1, human:false},
+];
+const TEAM_NAME = ['Us','Them'];
+const AI_DELAY = 650;
+
+let G = null;          // game state
+let uiSelection = [];  // card ids selected during the kitty discard
+let epoch = 0;         // bumped on every deal so stale timers do nothing
+
+/* Timers must not fire into a hand that has already been replaced. */
+function later(fn, ms){
+  const mine = epoch;
+  setTimeout(() => { if (mine === epoch) fn(); }, ms);
+}
+
+/* ---------- cards ---------- */
+let DECK_REF = null;   // one static copy, used for "what is still out there"
+function buildDeck(){
+  const d = [];
+  for (const s of SUITS) for (let r = 2; r <= 14; r++) d.push({id:s+r, suit:s, rank:r, joker:null});
+  d.push({id:'JB', suit:null, rank:0, joker:'big'});
+  d.push({id:'JL', suit:null, rank:0, joker:'little'});
+  return d;
+}
+DECK_REF = buildDeck();
+
+/* A seat knows a card's whereabouts if it has been played, it is in that
+   seat's own hand, or that seat is the declarer and put it in the kitty.
+   Nothing here looks at another player's hand. */
+function knownTo(seat, id){
+  if (G.seen.has(id)) return true;
+  if (G.hands[seat].some(c => c.id === id)) return true;
+  if (seat === G.bidder && G.kitty.some(c => c.id === id)) return true;
+  return false;
+}
+/* No card still unaccounted for outranks this one in its own suit. */
+function topOfSuit(card, seat){
+  const p = power(card);
+  if (p.tier === -1) return false;
+  for (const c of DECK_REF){
+    if (knownTo(seat, c.id)) continue;
+    const q = power(c);
+    if (q.tier === -1) continue;
+    if (q.tier === p.tier && q.suit === p.suit && q.val > p.val) return false;
+  }
+  return true;
+}
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+/* "You bid" but "West bids" - keeps the log reading like a table talk. */
+function V(seat, you, other){ return SEATS[seat].name + ' ' + (seat === 0 ? you : other); }
+function rankLabel(c){ return RANK_NAME[c.rank] || String(c.rank); }
+function cardName(c){
+  return c.joker ? (c.joker === 'big' ? 'Big Joker' : 'Little Joker')
+                 : rankLabel(c) + SUIT_SYM[c.suit];
+}
+function isRed(c){ return c.suit === 'H' || c.suit === 'D'; }
+
+/* Value of a card inside its own suit, given the contract direction. */
+function dirValue(c, dir){
+  if (dir === 'up') return c.rank;
+  return c.rank === 14 ? 14 : 15 - c.rank;   // downtown: A 2 3 ... K
+}
+/* Is this card a trump in the current contract? */
+function isTrump(c){
+  if (G.nt) return false;
+  return c.joker ? true : c.suit === G.trump;
+}
+/* The suit a card counts as for following suit. null = it belongs to no suit. */
+function effSuit(c){
+  if (c.joker) return G.nt ? null : G.trump;
+  return c.suit;
+}
+/* Comparable power. tier 1 = trump, 0 = plain, -1 = dead joker (no trump contract). */
+function power(c){
+  if (c.joker){
+    if (G.nt) return {tier:-1, val:-1, suit:null};
+    return {tier:1, val: c.joker === 'big' ? 200 : 199, suit:G.trump};
+  }
+  const v = dirValue(c, G.dir);
+  return {tier: (!G.nt && c.suit === G.trump) ? 1 : 0, val:v, suit:c.suit};
+}
+function sortHand(hand){
+  const order = {S:0, H:1, D:2, C:3};
+  return hand.slice().sort((a,b) => {
+    if (a.joker && b.joker) return a.joker === 'big' ? -1 : 1;
+    if (a.joker) return -1;
+    if (b.joker) return 1;
+    const ta = isTrump(a) ? -1 : order[a.suit];
+    const tb = isTrump(b) ? -1 : order[b.suit];
+    if (ta !== tb) return ta - tb;
+    return dirValue(b, G ? G.dir : 'up') - dirValue(a, G ? G.dir : 'up');
+  });
+}
+
+/* ---------- bidding helpers ---------- */
+function bidRank(b){ return b.level * 2 + (b.nt ? 1 : 0); }
+function bidText(b){
+  if (!b) return '';
+  return b.level + ' ' + (b.nt ? 'No Trump ' : '') + (b.dir === 'up' ? 'Uptown' : 'Downtown');
+}
+
+/* ============================================================
+   Game flow
+   ============================================================ */
+function newGame(){
+  epoch++;
+  G = {
+    hands:[[],[],[],[]], kitty:[], dealer:3, scores:[0,0],
+    phase:'deal', bid:null, bidder:null, bidHistory:[null,null,null,null],
+    turn:0, leader:0, trick:[], ledSuit:null, tricks:[0,0], trickNo:0,
+    trump:null, dir:'up', nt:false, gameOver:false, handNo:0, seen:new Set(), boston:null,
+  };
+  clearLog();
+  log('New game. First team to +7 wins; a team at -7 loses.', 'hl');
+  dealHand();
+}
+
+function dealHand(){
+  epoch++;
+  G.handNo++;
+  G.dealer = (G.dealer + 1) % 4;
+  const deck = shuffle(buildDeck());
+  G.hands = [[],[],[],[]];
+  for (let i = 0; i < 48; i++) G.hands[i % 4].push(deck[i]);
+  G.kitty = deck.slice(48);
+  G.bid = null; G.bidder = null; G.bidHistory = [null,null,null,null];
+  G.trump = null; G.dir = 'up'; G.nt = false;
+  G.tricks = [0,0]; G.trick = []; G.ledSuit = null; G.trickNo = 0;
+  G.seen = new Set(); G.boston = null;
+  G.phase = 'bid';
+  G.turn = (G.dealer + 1) % 4;
+  uiSelection = [];
+  log('--- Hand ' + G.handNo + ' --- ' + V(G.dealer, 'deal', 'deals') + '.', 'hl');
+  render();
+  step();
+}
+
+/* --- the driver: does whatever the current seat needs to do --- */
+function step(){
+  render();
+  if (G.gameOver) return;
+  if (G.phase === 'bid'){
+    if (SEATS[G.turn].human) return;              // wait for the buttons
+    later(() => { aiBid(G.turn); }, AI_DELAY);
+  } else if (G.phase === 'kitty'){
+    if (SEATS[G.bidder].human) return;            // wait for the discard panel
+    later(() => { aiKitty(G.bidder); }, AI_DELAY);
+  } else if (G.phase === 'play'){
+    if (SEATS[G.turn].human) return;              // wait for a card click
+    later(() => { playCard(G.turn, aiChooseCard(G.turn)); }, AI_DELAY);
+  }
+}
+
+/* ---------- bidding ---------- */
+function placeBid(seat, bid){
+  if (bid){
+    G.bidHistory[seat] = bid;
+    G.bid = bid; G.bidder = seat;
+    log(V(seat, 'bid', 'bids') + ' ' + bidText(bid) + '.');
+  } else {
+    G.bidHistory[seat] = 'pass';
+    log(V(seat, 'pass', 'passes') + '.');
+  }
+  advanceBid();
+}
+function advanceBid(){
+  const first = (G.dealer + 1) % 4;
+  const done = G.bidHistory.filter(b => b !== null).length;
+  if (done >= 4){
+    if (G.bidder === null){
+      log('Everyone passed. Throwing the hand in.', 'hl');
+      later(dealHand, 900);
+      return;
+    }
+    startKitty();
+    return;
+  }
+  G.turn = (first + done) % 4;
+  step();
+}
+function startKitty(){
+  G.phase = 'kitty';
+  G.dir = G.bid.dir; G.nt = G.bid.nt;
+  log(V(G.bidder, 'win', 'wins') + ' the bid at ' + bidText(G.bid) + ' and take' +
+      (G.bidder === 0 ? '' : 's') + ' the kitty.', 'hl');
+  G.hands[G.bidder] = G.hands[G.bidder].concat(G.kitty);
+  G.kitty = [];
+  uiSelection = [];
+  if (G.nt) G.trump = null;
+  step();
+}
+function finishKitty(seat, discards){
+  const ids = new Set(discards.map(c => c.id));
+  G.hands[seat] = G.hands[seat].filter(c => !ids.has(c.id));
+  G.kitty = discards;
+  G.phase = 'play';
+  G.leader = seat; G.turn = seat; G.trick = []; G.ledSuit = null;
+  log('Contract: ' + bidText(G.bid) + (G.nt ? '' : ', trump is ' + SUIT_NAME[G.trump]) +
+      ' by ' + SEATS[seat].name + '. ' + TEAM_NAME[SEATS[seat].team] + ' need ' + (6 + G.bid.level) + ' books.', 'hl');
+  step();
+}
+
+/* ---------- playing ---------- */
+function legalCards(seat){
+  const hand = G.hands[seat];
+  if (G.trick.length === 0){
+    // In a no-trump contract a dead joker may not be led.
+    const led = G.nt ? hand.filter(c => !c.joker) : hand;
+    return led.length ? led : hand.slice();
+  }
+  const follow = hand.filter(c => effSuit(c) === G.ledSuit && G.ledSuit !== null);
+  return follow.length ? follow : hand.slice();
+}
+function playCard(seat, card){
+  // Guard against a second click landing during the pause after a full book.
+  if (G.phase !== 'play' || G.turn !== seat || G.trick.length >= 4) return;
+  if (!G.hands[seat].some(c => c.id === card.id)) return;
+  G.hands[seat] = G.hands[seat].filter(c => c.id !== card.id);
+  G.seen.add(card.id);
+  G.trick.push({seat, card});
+  if (G.trick.length === 1) G.ledSuit = effSuit(card);
+  if (G.trick.length === 4){
+    render();
+    later(finishTrick, 950);
+    return;
+  }
+  G.turn = (seat + 1) % 4;
+  step();
+}
+function trickWinner(plays){
+  let best = null;
+  // A dead joker (no-trump contract) can only be led when it is the last card
+  // in a hand. When that happens the next real card played sets the suit.
+  let led = G.ledSuit;
+  if (led === null){
+    const real = plays.find(p => !p.card.joker);
+    led = real ? real.card.suit : null;
+  }
+  for (const p of plays){
+    const pw = power(p.card);
+    if (pw.tier === -1) continue;                         // dead joker
+    if (pw.tier === 0 && pw.suit !== led) continue;       // off-suit discard
+    if (!best) { best = {p, pw}; continue; }
+    if (pw.tier > best.pw.tier || (pw.tier === best.pw.tier && pw.val > best.pw.val)) best = {p, pw};
+  }
+  return best ? best.p.seat : plays[0].seat;
+}
+function finishTrick(){
+  const w = trickWinner(G.trick);
+  const team = SEATS[w].team;
+  G.tricks[team]++;
+  G.trickNo++;
+  const desc = G.trick.map(p => SEATS[p.seat].name + ' ' + cardName(p.card)).join(', ');
+  log('Book ' + G.trickNo + ': ' + desc + ' — ' + V(w, 'take', 'takes') + ' it.',
+      team === 0 ? 'good' : 'bad');
+  G.lastWinner = w;
+  render();
+  later(() => {
+    G.trick = []; G.ledSuit = null; G.lastWinner = null;
+    if (G.trickNo === 12){ scoreHand(); return; }
+    G.leader = w; G.turn = w;
+    step();
+  }, 500);
+}
+
+/* ---------- scoring ---------- */
+function scoreHand(){
+  G.phase = 'score';
+  const bt = SEATS[G.bidder].team;
+  const over = G.tricks[bt] - 6;
+  const need = G.bid.level;
+  const mult = G.nt ? 2 : 1;                       // no trump is worth double
+  const dbl = G.nt ? ', doubled for no trump' : '';
+  if (over >= need){
+    G.scores[bt] += over * mult;
+    log(TEAM_NAME[bt] + ' bid ' + need + ' and took ' + G.tricks[bt] + ' books. +' +
+        (over * mult) + dbl + '.', bt === 0 ? 'good' : 'bad');
+  } else {
+    G.scores[bt] -= need * mult;
+    log(TEAM_NAME[bt] + ' bid ' + need + ' but took only ' + G.tricks[bt] + ' books. Set for -' +
+        (need * mult) + dbl + '.', bt === 0 ? 'bad' : 'good');
+  }
+  G.boston = G.tricks[0] === 12 ? 0 : (G.tricks[1] === 12 ? 1 : null);
+  if (G.boston !== null)
+    log(TEAM_NAME[G.boston] + ' ran a Boston — all twelve books. That takes the game.',
+        G.boston === 0 ? 'good' : 'bad');
+  log('Score: Us ' + G.scores[0] + ', Them ' + G.scores[1] + '.', 'hl');
+  render();
+
+  if (G.boston !== null){ endGame(G.boston); return; }
+  if (G.scores[0] >= 7 || G.scores[1] <= -7){ endGame(0); return; }
+  if (G.scores[1] >= 7 || G.scores[0] <= -7){ endGame(1); return; }
+  render();
+}
+function endGame(team){
+  G.gameOver = true; G.winner = team; G.phase = 'over';
+  log(TEAM_NAME[team] + ' win the game' + (G.boston === team ? ' on a Boston' : '') +
+      ', ' + G.scores[0] + ' to ' + G.scores[1] + '.', team === 0 ? 'good' : 'bad');
+  render();
+}
+
+/* ============================================================
+   Computer players
+   ============================================================ */
+/* Rough count of the books this hand alone is worth under a given contract. */
+function estimate(hand, trump, dir, nt){
+  const val = c => dirValue(c, dir);
+  let t = 0;
+  if (!nt) t += hand.filter(c => c.joker).length;   // each joker is a book
+  for (const s of SUITS){
+    const cards = hand.filter(c => !c.joker && c.suit === s).map(val).sort((a, b) => b - a);
+    if (!nt && s === trump){
+      t += Math.max(0, cards.length - 2) * 0.6;     // length in trump pulls extra books
+      for (const v of cards){
+        if (v >= 13) t += 0.8;
+        else if (v >= 11) t += 0.35;
+      }
+    } else if (nt){
+      // Nothing can ruff a winner away, and a long suit runs once it is cleared.
+      if (cards[0] >= 14) t += 1.0;
+      if (cards[1] >= 13) t += 0.6;
+      if (cards[2] >= 12) t += 0.3;
+      t += Math.max(0, cards.length - 3) * 0.5;
+    } else {
+      // A side suit under a trump contract: honours can be ruffed away.
+      if (cards[0] >= 14) t += 0.8;
+      if (cards[1] >= 13) t += 0.35;
+      if (cards[2] >= 12) t += 0.15;
+      if (cards.length === 0) t += 0.5;             // short suits let you ruff
+      else if (cards.length === 1) t += 0.25;
+    }
+  }
+  return t + 0.8;                                   // the kitty is worth about this much
+}
+function bestContract(hand){
+  let best = null;
+  for (const dir of ['up','down']){
+    for (const s of SUITS){
+      const e = estimate(hand, s, dir, false);
+      if (!best || e > best.est) best = {est:e, trump:s, dir, nt:false};
+    }
+    const e = estimate(hand, null, dir, true);
+    if (!best || e > best.est + 0.15) best = {est:e, trump:null, dir, nt:true};
+  }
+  return best;
+}
+function aiBid(seat){
+  const c = bestContract(G.hands[seat]);
+  const mustBid = seat === G.dealer && G.bid === null;   // forced three on the dealer
+  let level = Math.round(c.est - 2.3);
+  if (level > 6 && c.est < 10) level = 6;
+  level = Math.min(7, level);
+  let bid = null;
+  if (level >= 3){
+    bid = {level, dir:c.dir, nt:c.nt};
+    // must beat the standing bid; nudge up one step if it is close enough to be worth it
+    if (G.bid){
+      while (bid && bidRank(bid) <= bidRank(G.bid)){
+        if (!bid.nt && c.est >= level + 3.3) bid.nt = true;
+        else if (bid.level < 7 && c.est >= bid.level + 3.6){ bid.level++; bid.nt = c.nt; }
+        else bid = null;
+      }
+    }
+  }
+  if (!bid && mustBid) bid = {level:3, dir:c.dir, nt:false};
+  if (bid) bid.trumpHint = c.trump;
+  placeBid(seat, bid);
+}
+function aiKitty(seat){
+  const hand = G.hands[seat];
+  if (!G.nt){
+    const hint = G.bid.trumpHint;
+    let best = hint, bestScore = -1;
+    for (const s of SUITS){
+      const n = hand.filter(c => !c.joker && c.suit === s).length +
+                hand.filter(c => c.joker).length;
+      const high = hand.filter(c => !c.joker && c.suit === s && dirValue(c, G.dir) >= 12).length;
+      const sc = n * 1.0 + high * 0.7;
+      if (sc > bestScore){ bestScore = sc; best = s; }
+    }
+    G.trump = best;
+  }
+  // discard the 6 least useful cards
+  const scored = hand.map(c => ({c, k:keepValue(c, hand)})).sort((a,b) => a.k - b.k);
+  finishKitty(seat, scored.slice(0, 6).map(x => x.c));
+}
+function keepValue(c, hand){
+  if (c.joker) return G.nt ? -100 : 100;            // dump jokers in no trump, never otherwise
+  const v = dirValue(c, G.dir);
+  if (isTrump(c)) return 50 + v;
+  const len = hand.filter(x => !x.joker && x.suit === c.suit).length;
+  let k = v;
+  if (v >= 14) k += 20;
+  else if (v >= 13) k += 8;
+  if (!G.nt && len <= 2) k -= 6;                    // shortening a side suit is good with trump
+  return k;
+}
+
+function aiChooseCard(seat){
+  const legal = legalCards(seat);
+  if (legal.length === 1) return legal[0];
+  if (G.trick.length === 0) return aiLead(seat, legal);
+
+  const wSeat = trickWinner(G.trick);
+  const partnerAhead = SEATS[wSeat].team === SEATS[seat].team;
+  const isLast = G.trick.length === 3;
+  const winners = legal.filter(wouldWin);
+
+  if (partnerAhead){
+    // Don't climb over partner's card when it looks like it will hold.
+    if (isLast || currentIsStrong()) return pitch(seat, legal);
+    return winners.length ? cheapest(winners) : pitch(seat, legal);
+  }
+  if (winners.length){
+    if (isLast) return cheapest(winners);
+    // Earlier in the book, win with something that will survive the players behind you.
+    const solid = winners.filter(c => isTrump(c) || topOfSuit(c, seat));
+    return cheapest(solid.length ? solid : winners);
+  }
+  return pitch(seat, legal);
+}
+
+function aiLead(seat, legal){
+  const declaring = SEATS[seat].team === SEATS[G.bidder].team;
+  if (!G.nt){
+    const jokers = legal.filter(c => c.joker);
+    if (jokers.length && G.trickNo < 5) return jokers.sort((a, b) => cmpPower(b, a))[0];
+    const trumps = legal.filter(isTrump).sort((a, b) => cmpPower(b, a));
+    if (trumps.length >= 4 && G.trickNo < 7 && declaring) return trumps[0];
+  }
+  // Cash a side-suit card nothing outstanding can beat.
+  const boss = legal.filter(c => !isTrump(c) && !c.joker && topOfSuit(c, seat));
+  if (boss.length) return boss.sort((a, b) => cmpPower(b, a))[0];
+  // Holding trump, shorten a side suit early so you can ruff it later.
+  if (!G.nt && G.trickNo < 6 && legal.some(isTrump)){
+    const plain = legal.filter(c => !isTrump(c) && !c.joker);
+    if (plain.length){
+      const len = {};
+      for (const c of plain) len[c.suit] = (len[c.suit] || 0) + 1;
+      const shortest = Object.keys(len).sort((a, b) => len[a] - len[b])[0];
+      return plain.filter(c => c.suit === shortest).sort((a, b) => cmpPower(a, b))[0];
+    }
+  }
+  const plain = legal.filter(c => !isTrump(c));
+  return (plain.length ? plain : legal).sort((a, b) => cmpPower(a, b))[0];
+}
+
+/* Is the card currently winning the book a hard one to beat? */
+function currentIsStrong(){
+  const pw = power(G.trick.find(x => x.seat === trickWinner(G.trick)).card);
+  return pw.tier === 1 || pw.val >= 13;
+}
+/* Throw the card worth least from here on: dead jokers first, trump last. */
+function pitch(seat, legal){
+  return legal.slice().sort((a, b) => keepScore(a, seat) - keepScore(b, seat))[0];
+}
+function keepScore(c, seat){
+  const p = power(c);
+  if (p.tier === -1) return -50;                   // a dead joker is pure ballast
+  let k = p.val;
+  if (p.tier === 1) k += 60;
+  if (topOfSuit(c, seat)) k += 25;
+  return k;
+}
+function cheapest(cards){
+  return cards.slice().sort((a, b) => cmpPower(a, b))[0];
+}
+function cmpPower(a, b){
+  const pa = power(a), pb = power(b);
+  if (pa.tier !== pb.tier) return pa.tier - pb.tier;
+  return pa.val - pb.val;
+}
+function wouldWin(card){
+  const test = G.trick.concat([{seat:-1, card}]);
+  return trickWinner(test) === -1;
+}
+
+/* ============================================================
+   Rendering
+   ============================================================ */
+const $ = id => document.getElementById(id);
+
+function cardNode(c, small){
+  const d = document.createElement('div');
+  d.className = 'card' + (small ? ' sm' : '') + (c.joker ? ' joker' : (isRed(c) ? ' red' : ''));
+  const r = document.createElement('span'); r.className = 'idx';
+  const s = document.createElement('span'); s.className = 'pip';
+  if (c.joker){ r.textContent = c.joker === 'big' ? 'BIG' : 'LIL'; s.textContent = '★'; }
+  else { r.textContent = rankLabel(c); s.textContent = SUIT_SYM[c.suit]; }
+  d.appendChild(r); d.appendChild(s);
+  return d;
+}
+
+function render(){
+  if (!G) return;
+  $('scoreUs').textContent = G.scores[0];
+  $('scoreThem').textContent = G.scores[1];
+  // the marker sits on the -7 .. +7 race
+  const pos = v => (Math.max(-7, Math.min(7, v)) + 7) / 14 * 100 + '%';
+  $('trackUs').style.left = pos(G.scores[0]);
+  $('trackThem').style.left = pos(G.scores[1]);
+  renderSeats();
+  renderCenter();
+  renderHand();
+  renderStatus();
+  renderPanel();
+}
+
+function renderSeats(){
+  for (let i = 0; i < 4; i++){
+    const el = $('seat' + i);
+    el.className = 'seat seat-' + ['s','w','n','e'][i] +
+      ((G.turn === i && (G.phase === 'bid' || (G.phase === 'play' && G.trick.length < 4))) ? ' active' : '');
+    let html = '<div class="nm">' + SEATS[i].name + (i === G.dealer ? ' <span class="d">DEAL</span>' : '') + '</div>';
+    html += '<div class="team">' + TEAM_NAME[SEATS[i].team] + '</div>';
+    if (i !== 0){
+      html += '<div class="backs">' + '<i></i>'.repeat(Math.min(G.hands[i].length, 12)) + '</div>';
+    }
+    const bh = G.bidHistory[i];
+    if (G.phase === 'bid' || G.phase === 'kitty'){
+      if (bh === 'pass') html += '<div class="bidtag pass">pass</div>';
+      else if (bh) html += '<div class="bidtag' + (G.bidder === i ? ' win' : '') + '">' + bidText(bh) + '</div>';
+    }
+    if (G.phase === 'play' || G.phase === 'score' || G.phase === 'over'){
+      html += '<div class="meta">' + G.hands[i].length + ' cards' +
+              (G.bidder === i ? ' · bidder' : '') + '</div>';
+    }
+    el.innerHTML = html;
+  }
+}
+
+function renderCenter(){
+  const area = $('trickArea');
+  area.innerHTML = '';
+  for (const p of G.trick){
+    const slot = document.createElement('div');
+    slot.className = 'slot p' + p.seat;
+    const n = cardNode(p.card, true);
+    if (G.lastWinner === p.seat) n.classList.add('win');
+    slot.appendChild(n);
+    area.appendChild(slot);
+  }
+  const c = $('contract');
+  if (G.phase === 'play' || G.phase === 'score' || G.phase === 'over'){
+    c.innerHTML = (G.trick.length ? '' :
+      '<span class="big">' + bidText(G.bid) + '</span>' +
+      (G.nt ? 'No trump' : 'Trump: ' + SUIT_SYM[G.trump] + ' ' + SUIT_NAME[G.trump]) +
+      '<br><span class="books">Books — Us ' + G.tricks[0] + ' · Them ' + G.tricks[1] + '</span>');
+  } else if (G.phase === 'bid'){
+    c.innerHTML = G.bid ? '<span class="big">' + bidText(G.bid) + '</span>' +
+                          'high bid · ' + SEATS[G.bidder].name
+                        : '<span class="big">Bidding</span>no bid yet';
+  } else {
+    c.innerHTML = '';
+  }
+}
+
+function renderHand(){
+  const box = $('myHand');
+  box.innerHTML = '';
+  const myTurn = G.phase === 'play' && G.turn === 0 && G.trick.length < 4;
+  const picking = G.phase === 'kitty' && G.bidder === 0;
+  const legal = myTurn ? new Set(legalCards(0).map(c => c.id)) : null;
+  box.classList.toggle('locked', !myTurn && !picking);
+  $('handLabel').textContent = picking
+    ? 'Your hand + kitty — pick 6 cards to discard (' + uiSelection.length + '/6)'
+    : 'Your hand';
+  for (const c of sortHand(G.hands[0])){
+    const n = cardNode(c, false);
+    if (picking){
+      if (uiSelection.includes(c.id)) n.classList.add('sel');
+      n.onclick = () => toggleDiscard(c.id);
+    } else if (myTurn){
+      if (!legal.has(c.id)) n.classList.add('dim');
+      else n.onclick = () => { playCard(0, c); };
+    }
+    box.appendChild(n);
+  }
+}
+
+/* The contract has to stay on screen even when cards cover the table. */
+function dealLine(){
+  if (!(G.phase === 'play' || G.phase === 'score' || G.phase === 'over') || !G.bid) return '';
+  const t = G.nt ? '<span>no trump</span>'
+                 : '<span class="suit' + (G.trump === 'H' || G.trump === 'D' ? ' red' : '') + '">' +
+                   SUIT_SYM[G.trump] + '</span>';
+  return '<div class="deal"><b>' + bidText(G.bid) + '</b>' + t +
+         '<span>' + SEATS[G.bidder].name + ' bid · ' + TEAM_NAME[SEATS[G.bidder].team] +
+         ' need ' + (6 + G.bid.level) + '</span>' +
+         '<span>Books — Us ' + G.tricks[0] + ' · Them ' + G.tricks[1] + '</span></div>';
+}
+function renderStatus(){
+  const s = $('status');
+  if (G.phase === 'over'){
+    s.textContent = (G.winner === 0 ? 'You win! ' : 'You lose. ') +
+                    'Final score: Us ' + G.scores[0] + ', Them ' + G.scores[1] + '.';
+  } else if (G.phase === 'score'){
+    s.textContent = 'Hand over. Us took ' + G.tricks[0] + ' books, Them took ' + G.tricks[1] + '.';
+  } else if (G.phase === 'bid'){
+    s.textContent = G.turn === 0 ? 'Your bid.' : 'Waiting on ' + SEATS[G.turn].name + ' to bid…';
+  } else if (G.phase === 'kitty'){
+    s.textContent = G.bidder === 0 ? 'You won the bid. Set trump and discard 6.'
+                                   : SEATS[G.bidder].name + ' is looking at the kitty…';
+  } else if (G.phase === 'play'){
+    s.textContent = G.turn === 0 ? 'Your lead or your play.'
+                                 : SEATS[G.turn].name + ' to play…';
+  } else s.textContent = 'Dealing…';
+  const d = dealLine();
+  if (d) s.innerHTML = d + '<div>' + s.textContent.replace(/</g, '&lt;') + '</div>';
+}
+
+/* ---------- interactive panel (bidding, kitty, next hand) ---------- */
+function renderPanel(){
+  const p = $('panel');
+  p.className = 'panel';
+  p.innerHTML = '';
+  p.classList.remove('on');
+
+  if (G.phase === 'bid' && G.turn === 0){
+    p.classList.add('on');
+    const mustBid = G.dealer === 0 && G.bid === null;   // forced three on the dealer
+    const min = G.bid ? bidRank(G.bid) + 1 : 6;
+    const opts = [];
+    for (let lv = 3; lv <= 7; lv++){
+      for (const nt of [false, true]){
+        if (lv * 2 + (nt ? 1 : 0) >= min) opts.push({level:lv, nt});
+      }
+    }
+    let html = '<h4>Your bid</h4>';
+    if (!opts.length){
+      html += '<p class="hint">Nothing left to bid over ' + bidText(G.bid) + '.</p>';
+    } else {
+      html += '<div class="row"><label>Bid</label><select id="bidPick">';
+      for (const o of opts){
+        html += '<option value="' + o.level + (o.nt ? 'N' : 'S') + '">' +
+                o.level + (o.nt ? ' No Trump' : ' with trump') + '</option>';
+      }
+      html += '</select></div>';
+      html += '<div class="row"><label>Way</label><select id="dirPick">' +
+              '<option value="up">Uptown (A high)</option>' +
+              '<option value="down">Downtown (A, 2, 3 …)</option></select></div>';
+      html += '<p class="hint">' + (mustBid
+        ? 'All three passed, so as dealer you have to bid. '
+        : '') + 'You name the trump suit after you take the kitty.</p>';
+    }
+    html += '<div class="row" style="margin-top:4px">' +
+            (opts.length ? '<button id="btnBid">Bid</button>' : '') +
+            (mustBid ? '' : '<button class="ghost" id="btnPass">Pass</button>') + '</div>';
+    p.innerHTML = html;
+    if (opts.length) $('btnBid').onclick = () => {
+      const v = $('bidPick').value;
+      placeBid(0, {level: parseInt(v, 10), nt: v.endsWith('N'), dir: $('dirPick').value});
+    };
+    if (!mustBid) $('btnPass').onclick = () => placeBid(0, null);
+    return;
+  }
+
+  if (G.phase === 'kitty' && G.bidder === 0){
+    p.classList.add('on');
+    let html = '<h4>Take the kitty</h4>';
+    if (!G.nt){
+      html += '<div class="row"><label>Trump</label><div class="suitbtns">';
+      for (const s of SUITS){
+        html += '<button class="suitbtn' + (isRed({suit:s}) ? ' red' : '') +
+                (G.trump === s ? ' on' : '') + '" data-suit="' + s + '">' + SUIT_SYM[s] + '</button>';
+      }
+      html += '</div></div>';
+    } else {
+      html += '<p class="hint">No trump this hand. Any joker you hold must go into the discard.</p>';
+    }
+    html += '<div class="row"><button id="btnDiscard">Discard 6</button></div>';
+    p.innerHTML = html;
+    p.querySelectorAll('.suitbtn').forEach(b => {
+      b.onclick = () => { G.trump = b.dataset.suit; render(); };
+    });
+    const jokers = G.hands[0].filter(c => c.joker).map(c => c.id);
+    const ok = uiSelection.length === 6 && (G.nt || G.trump) &&
+               (!G.nt || jokers.every(j => uiSelection.includes(j)));
+    const btn = $('btnDiscard');
+    btn.disabled = !ok;
+    btn.onclick = () => {
+      const set = new Set(uiSelection);
+      finishKitty(0, G.hands[0].filter(c => set.has(c.id)));
+    };
+    return;
+  }
+
+  if (G.phase === 'score'){
+    p.classList.add('on');
+    p.innerHTML = '<h4>Hand complete</h4><div class="row"><button id="btnNext">Deal next hand</button></div>';
+    $('btnNext').onclick = () => dealHand();
+    return;
+  }
+
+  if (G.phase === 'over'){
+    p.classList.add('on');
+    p.innerHTML = '<h4>Game over</h4><div class="row"><button id="btnAgain">Play again</button></div>';
+    $('btnAgain').onclick = () => newGame();
+    return;
+  }
+}
+
+function toggleDiscard(id){
+  const i = uiSelection.indexOf(id);
+  if (i >= 0) uiSelection.splice(i, 1);
+  else if (uiSelection.length < 6) uiSelection.push(id);
+  render();
+}
+
+/* ---------- log ---------- */
+function clearLog(){ $('log').innerHTML = ''; }
+function log(msg, cls){
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  const box = $('log');
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ---------- boot ---------- */
+$('btnHelp').onclick = () => { $('modal').hidden = false; };
+$('btnCloseHelp').onclick = () => { $('modal').hidden = true; };
+$('modal').onclick = e => { if (e.target.id === 'modal') $('modal').hidden = true; };
+$('btnNew').onclick = () => newGame();
+newGame();
+</script>
+</body>
+</html>
