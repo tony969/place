@@ -333,8 +333,9 @@ header{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:0 2px 1
       <li><b>No Trump</b> &mdash; no suit is trump. You still pick uptown or downtown.
           A no-trump bid outranks a suit bid at the same number, so 4 No Trump beats 4 Uptown.</li>
     </ul>
-    <p>Each bid must beat the one before it. You may always <b>Pass</b>. If everyone passes,
-       the hand is thrown in and redealt by the next dealer.</p>
+    <p>Each bid must beat the one before it, and you may pass. The dealer cannot:
+       if the other three all pass, the dealer is stuck with a <b>forced three</b>
+       and bids the direction of their choice.</p>
 
     <h3>The kitty</h3>
     <p>Whoever wins the bid picks up all 6 kitty cards, names the <b>trump suit</b>
@@ -363,14 +364,19 @@ header{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:0 2px 1
       <li>If the bidding team takes at least 6 + their bid, they score <b>one point for every book over six</b>
           that they actually took.</li>
       <li>If they fall short they are <b>set</b> and lose the amount of their bid.</li>
+      <li>A <b>no-trump</b> contract is worth <b>double</b>, either way &mdash; a made 4 no-trump scores 8,
+          and a set one costs 8.</li>
       <li>The defending team does not score.</li>
       <li>First team to reach <b>+7</b> wins. A team that falls to <b>&minus;7</b> loses.</li>
+      <li><b>Boston.</b> Take all twelve books and you win the game on the spot, whatever the score was.
+          It counts for the defenders too &mdash; shut the bidders out completely and the game is yours.</li>
     </ul>
 
     <h3>House rules</h3>
-    <p>Bid Whist varies from table to table. This version does not double no-trump contracts,
-       does not use a forced dealer bid, and redeals when everyone passes. Kitty cards are
-       never counted toward either team.</p>
+    <p>Bid Whist varies from table to table. This version doubles no-trump, forces a three on the
+       dealer rather than redealing, and lets a Boston end the game outright. Kitty cards are never
+       counted toward either team, and uptown and downtown rank equally when bidding, so a 4 Downtown
+       cannot be bid over a 4 Uptown.</p>
 
     </div>
     <div class="close"><button id="btnCloseHelp">Got it</button></div>
@@ -409,12 +415,36 @@ function later(fn, ms){
 }
 
 /* ---------- cards ---------- */
+let DECK_REF = null;   // one static copy, used for "what is still out there"
 function buildDeck(){
   const d = [];
   for (const s of SUITS) for (let r = 2; r <= 14; r++) d.push({id:s+r, suit:s, rank:r, joker:null});
   d.push({id:'JB', suit:null, rank:0, joker:'big'});
   d.push({id:'JL', suit:null, rank:0, joker:'little'});
   return d;
+}
+DECK_REF = buildDeck();
+
+/* A seat knows a card's whereabouts if it has been played, it is in that
+   seat's own hand, or that seat is the declarer and put it in the kitty.
+   Nothing here looks at another player's hand. */
+function knownTo(seat, id){
+  if (G.seen.has(id)) return true;
+  if (G.hands[seat].some(c => c.id === id)) return true;
+  if (seat === G.bidder && G.kitty.some(c => c.id === id)) return true;
+  return false;
+}
+/* No card still unaccounted for outranks this one in its own suit. */
+function topOfSuit(card, seat){
+  const p = power(card);
+  if (p.tier === -1) return false;
+  for (const c of DECK_REF){
+    if (knownTo(seat, c.id)) continue;
+    const q = power(c);
+    if (q.tier === -1) continue;
+    if (q.tier === p.tier && q.suit === p.suit && q.val > p.val) return false;
+  }
+  return true;
 }
 function shuffle(a){
   for (let i = a.length - 1; i > 0; i--){
@@ -485,7 +515,7 @@ function newGame(){
     hands:[[],[],[],[]], kitty:[], dealer:3, scores:[0,0],
     phase:'deal', bid:null, bidder:null, bidHistory:[null,null,null,null],
     turn:0, leader:0, trick:[], ledSuit:null, tricks:[0,0], trickNo:0,
-    trump:null, dir:'up', nt:false, gameOver:false, handNo:0,
+    trump:null, dir:'up', nt:false, gameOver:false, handNo:0, seen:new Set(), boston:null,
   };
   clearLog();
   log('New game. First team to +7 wins; a team at -7 loses.', 'hl');
@@ -503,6 +533,7 @@ function dealHand(){
   G.bid = null; G.bidder = null; G.bidHistory = [null,null,null,null];
   G.trump = null; G.dir = 'up'; G.nt = false;
   G.tricks = [0,0]; G.trick = []; G.ledSuit = null; G.trickNo = 0;
+  G.seen = new Set(); G.boston = null;
   G.phase = 'bid';
   G.turn = (G.dealer + 1) % 4;
   uiSelection = [];
@@ -592,6 +623,7 @@ function playCard(seat, card){
   if (G.phase !== 'play' || G.turn !== seat || G.trick.length >= 4) return;
   if (!G.hands[seat].some(c => c.id === card.id)) return;
   G.hands[seat] = G.hands[seat].filter(c => c.id !== card.id);
+  G.seen.add(card.id);
   G.trick.push({seat, card});
   if (G.trick.length === 1) G.ledSuit = effSuit(card);
   if (G.trick.length === 4){
@@ -644,26 +676,33 @@ function scoreHand(){
   const bt = SEATS[G.bidder].team;
   const over = G.tricks[bt] - 6;
   const need = G.bid.level;
+  const mult = G.nt ? 2 : 1;                       // no trump is worth double
+  const dbl = G.nt ? ', doubled for no trump' : '';
   if (over >= need){
-    G.scores[bt] += over;
-    log(TEAM_NAME[bt] + ' bid ' + need + ' and took ' + G.tricks[bt] + ' books. +' + over + '.',
-        bt === 0 ? 'good' : 'bad');
+    G.scores[bt] += over * mult;
+    log(TEAM_NAME[bt] + ' bid ' + need + ' and took ' + G.tricks[bt] + ' books. +' +
+        (over * mult) + dbl + '.', bt === 0 ? 'good' : 'bad');
   } else {
-    G.scores[bt] -= need;
-    log(TEAM_NAME[bt] + ' bid ' + need + ' but took only ' + G.tricks[bt] + ' books. Set for -' + need + '.',
-        bt === 0 ? 'bad' : 'good');
+    G.scores[bt] -= need * mult;
+    log(TEAM_NAME[bt] + ' bid ' + need + ' but took only ' + G.tricks[bt] + ' books. Set for -' +
+        (need * mult) + dbl + '.', bt === 0 ? 'bad' : 'good');
   }
+  G.boston = G.tricks[0] === 12 ? 0 : (G.tricks[1] === 12 ? 1 : null);
+  if (G.boston !== null)
+    log(TEAM_NAME[G.boston] + ' ran a Boston — all twelve books. That takes the game.',
+        G.boston === 0 ? 'good' : 'bad');
   log('Score: Us ' + G.scores[0] + ', Them ' + G.scores[1] + '.', 'hl');
   render();
 
+  if (G.boston !== null){ endGame(G.boston); return; }
   if (G.scores[0] >= 7 || G.scores[1] <= -7){ endGame(0); return; }
   if (G.scores[1] >= 7 || G.scores[0] <= -7){ endGame(1); return; }
   render();
 }
 function endGame(team){
   G.gameOver = true; G.winner = team; G.phase = 'over';
-  log(TEAM_NAME[team] + ' win the game, ' + G.scores[0] + ' to ' + G.scores[1] + '.',
-      team === 0 ? 'good' : 'bad');
+  log(TEAM_NAME[team] + ' win the game' + (G.boston === team ? ' on a Boston' : '') +
+      ', ' + G.scores[0] + ' to ' + G.scores[1] + '.', team === 0 ? 'good' : 'bad');
   render();
 }
 
@@ -676,21 +715,26 @@ function estimate(hand, trump, dir, nt){
   let t = 0;
   if (!nt) t += hand.filter(c => c.joker).length;   // each joker is a book
   for (const s of SUITS){
-    const cards = hand.filter(c => !c.joker && c.suit === s).map(val).sort((a,b) => b - a);
+    const cards = hand.filter(c => !c.joker && c.suit === s).map(val).sort((a, b) => b - a);
     if (!nt && s === trump){
       t += Math.max(0, cards.length - 2) * 0.6;     // length in trump pulls extra books
       for (const v of cards){
         if (v >= 13) t += 0.8;
         else if (v >= 11) t += 0.35;
       }
+    } else if (nt){
+      // Nothing can ruff a winner away, and a long suit runs once it is cleared.
+      if (cards[0] >= 14) t += 1.0;
+      if (cards[1] >= 13) t += 0.6;
+      if (cards[2] >= 12) t += 0.3;
+      t += Math.max(0, cards.length - 3) * 0.5;
     } else {
-      if (cards[0] >= 14) t += 0.9;
-      if (cards[1] >= 13) t += 0.45;
-      if (cards[2] >= 12) t += 0.2;
-      if (!nt){                                     // short suits let you ruff
-        if (cards.length === 0) t += 0.5;
-        else if (cards.length === 1) t += 0.25;
-      }
+      // A side suit under a trump contract: honours can be ruffed away.
+      if (cards[0] >= 14) t += 0.8;
+      if (cards[1] >= 13) t += 0.35;
+      if (cards[2] >= 12) t += 0.15;
+      if (cards.length === 0) t += 0.5;             // short suits let you ruff
+      else if (cards.length === 1) t += 0.25;
     }
   }
   return t + 0.8;                                   // the kitty is worth about this much
@@ -709,7 +753,8 @@ function bestContract(hand){
 }
 function aiBid(seat){
   const c = bestContract(G.hands[seat]);
-  let level = Math.round(c.est - 3.3);
+  const mustBid = seat === G.dealer && G.bid === null;   // forced three on the dealer
+  let level = Math.round(c.est - 2.3);
   if (level > 6 && c.est < 10) level = 6;
   level = Math.min(7, level);
   let bid = null;
@@ -724,6 +769,7 @@ function aiBid(seat){
       }
     }
   }
+  if (!bid && mustBid) bid = {level:3, dir:c.dir, nt:false};
   if (bid) bid.trumpHint = c.trump;
   placeBid(seat, bid);
 }
@@ -760,35 +806,71 @@ function keepValue(c, hand){
 function aiChooseCard(seat){
   const legal = legalCards(seat);
   if (legal.length === 1) return legal[0];
-  const byPower = legal.slice().sort((a,b) => cmpPower(b, a));
-  const low = legal.slice().sort((a,b) => cmpPower(a, b));
-
-  if (G.trick.length === 0){
-    // leading
-    if (!G.nt){
-      const jokers = legal.filter(c => c.joker);
-      if (jokers.length && G.trickNo < 5) return jokers.sort((a,b) => cmpPower(b, a))[0];
-      const trumps = legal.filter(isTrump).sort((a,b) => cmpPower(b, a));
-      if (trumps.length >= 4 && G.trickNo < 7 && SEATS[seat].team === SEATS[G.bidder].team) return trumps[0];
-    }
-    const boss = legal.filter(c => !c.joker && !isTrump(c) && dirValue(c, G.dir) >= 14);
-    if (boss.length) return boss[0];
-    const plain = low.filter(c => !isTrump(c) && !c.joker);
-    return plain.length ? plain[0] : low[0];
-  }
+  if (G.trick.length === 0) return aiLead(seat, legal);
 
   const wSeat = trickWinner(G.trick);
   const partnerAhead = SEATS[wSeat].team === SEATS[seat].team;
-  const last = G.trick.length === 3;
-  const winners = legal.filter(c => wouldWin(c));
+  const isLast = G.trick.length === 3;
+  const winners = legal.filter(wouldWin);
 
-  if (partnerAhead && (last || currentIsStrong())) return low[0];   // let partner have it
-  if (winners.length){
-    const cheap = winners.slice().sort((a,b) => cmpPower(a, b));
-    const plainWin = cheap.filter(c => !isTrump(c));
-    return plainWin.length ? plainWin[0] : cheap[0];
+  if (partnerAhead){
+    // Don't climb over partner's card when it looks like it will hold.
+    if (isLast || currentIsStrong()) return pitch(seat, legal);
+    return winners.length ? cheapest(winners) : pitch(seat, legal);
   }
-  return low[0];
+  if (winners.length){
+    if (isLast) return cheapest(winners);
+    // Earlier in the book, win with something that will survive the players behind you.
+    const solid = winners.filter(c => isTrump(c) || topOfSuit(c, seat));
+    return cheapest(solid.length ? solid : winners);
+  }
+  return pitch(seat, legal);
+}
+
+function aiLead(seat, legal){
+  const declaring = SEATS[seat].team === SEATS[G.bidder].team;
+  if (!G.nt){
+    const jokers = legal.filter(c => c.joker);
+    if (jokers.length && G.trickNo < 5) return jokers.sort((a, b) => cmpPower(b, a))[0];
+    const trumps = legal.filter(isTrump).sort((a, b) => cmpPower(b, a));
+    if (trumps.length >= 4 && G.trickNo < 7 && declaring) return trumps[0];
+  }
+  // Cash a side-suit card nothing outstanding can beat.
+  const boss = legal.filter(c => !isTrump(c) && !c.joker && topOfSuit(c, seat));
+  if (boss.length) return boss.sort((a, b) => cmpPower(b, a))[0];
+  // Holding trump, shorten a side suit early so you can ruff it later.
+  if (!G.nt && G.trickNo < 6 && legal.some(isTrump)){
+    const plain = legal.filter(c => !isTrump(c) && !c.joker);
+    if (plain.length){
+      const len = {};
+      for (const c of plain) len[c.suit] = (len[c.suit] || 0) + 1;
+      const shortest = Object.keys(len).sort((a, b) => len[a] - len[b])[0];
+      return plain.filter(c => c.suit === shortest).sort((a, b) => cmpPower(a, b))[0];
+    }
+  }
+  const plain = legal.filter(c => !isTrump(c));
+  return (plain.length ? plain : legal).sort((a, b) => cmpPower(a, b))[0];
+}
+
+/* Is the card currently winning the book a hard one to beat? */
+function currentIsStrong(){
+  const pw = power(G.trick.find(x => x.seat === trickWinner(G.trick)).card);
+  return pw.tier === 1 || pw.val >= 13;
+}
+/* Throw the card worth least from here on: dead jokers first, trump last. */
+function pitch(seat, legal){
+  return legal.slice().sort((a, b) => keepScore(a, seat) - keepScore(b, seat))[0];
+}
+function keepScore(c, seat){
+  const p = power(c);
+  if (p.tier === -1) return -50;                   // a dead joker is pure ballast
+  let k = p.val;
+  if (p.tier === 1) k += 60;
+  if (topOfSuit(c, seat)) k += 25;
+  return k;
+}
+function cheapest(cards){
+  return cards.slice().sort((a, b) => cmpPower(a, b))[0];
 }
 function cmpPower(a, b){
   const pa = power(a), pb = power(b);
@@ -798,12 +880,6 @@ function cmpPower(a, b){
 function wouldWin(card){
   const test = G.trick.concat([{seat:-1, card}]);
   return trickWinner(test) === -1;
-}
-function currentIsStrong(){
-  const wSeat = trickWinner(G.trick);
-  const p = G.trick.find(x => x.seat === wSeat);
-  const pw = power(p.card);
-  return pw.tier === 1 || pw.val >= 13;
 }
 
 /* ============================================================
@@ -949,6 +1025,7 @@ function renderPanel(){
 
   if (G.phase === 'bid' && G.turn === 0){
     p.classList.add('on');
+    const mustBid = G.dealer === 0 && G.bid === null;   // forced three on the dealer
     const min = G.bid ? bidRank(G.bid) + 1 : 6;
     const opts = [];
     for (let lv = 3; lv <= 7; lv++){
@@ -969,17 +1046,19 @@ function renderPanel(){
       html += '<div class="row"><label>Way</label><select id="dirPick">' +
               '<option value="up">Uptown (A high)</option>' +
               '<option value="down">Downtown (A, 2, 3 …)</option></select></div>';
-      html += '<p class="hint">You name the trump suit after you take the kitty.</p>';
+      html += '<p class="hint">' + (mustBid
+        ? 'All three passed, so as dealer you have to bid. '
+        : '') + 'You name the trump suit after you take the kitty.</p>';
     }
     html += '<div class="row" style="margin-top:4px">' +
             (opts.length ? '<button id="btnBid">Bid</button>' : '') +
-            '<button class="ghost" id="btnPass">Pass</button></div>';
+            (mustBid ? '' : '<button class="ghost" id="btnPass">Pass</button>') + '</div>';
     p.innerHTML = html;
     if (opts.length) $('btnBid').onclick = () => {
       const v = $('bidPick').value;
       placeBid(0, {level: parseInt(v, 10), nt: v.endsWith('N'), dir: $('dirPick').value});
     };
-    $('btnPass').onclick = () => placeBid(0, null);
+    if (!mustBid) $('btnPass').onclick = () => placeBid(0, null);
     return;
   }
 
